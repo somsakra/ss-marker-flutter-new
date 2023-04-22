@@ -1,3 +1,4 @@
+import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -99,19 +100,26 @@ class _LoginPageState extends State<LoginPage> {
                                     width: double.infinity,
                                     child: TextButton(
                                         onPressed: () async {
+                                          showLoading(
+                                                  msg: 'Logging in...',
+                                                  icon: Icons.login)
+                                              .show(context);
                                           _form.currentState?.save();
-                                          final result = await NetworkService()
-                                              .userLogin(_credential);
-                                          SharedPreferences pref =
-                                              await SharedPreferences
-                                                  .getInstance();
-                                          pref.setString(
-                                              Setting.token, result['token']);
-                                          pref.setString(
-                                              Setting.email, result['email']);
-                                          if (!mounted) return;
-                                          Navigator.pushReplacementNamed(
-                                              context, custom_route.Route.home);
+                                          NetworkService()
+                                              .userLogin(_credential)
+                                              .then((result) {
+                                            SharedPreferences.getInstance()
+                                                .then((pref) {
+                                              pref.setString(Setting.token,
+                                                  result['token']);
+                                              pref.setString(Setting.email,
+                                                  result['email']);
+                                              Navigator.pushNamedAndRemoveUntil(
+                                                  context,
+                                                  '/',
+                                                  (route) => false);
+                                            });
+                                          });
                                         },
                                         style: TextButton.styleFrom(
                                           foregroundColor: Colors.blueGrey,
@@ -169,4 +177,18 @@ TextButton _buildTextButton(String text,
         text,
         style: TextStyle(color: Colors.blueGrey, fontSize: fontSize),
       ));
+}
+
+Flushbar<dynamic> showLoading({required String msg, required IconData icon}) {
+  return Flushbar(
+    message: msg,
+    icon: Icon(
+      icon,
+      size: 28.0,
+      color: Colors.orange,
+    ),
+    showProgressIndicator: true,
+    flushbarPosition: FlushbarPosition.TOP,
+    flushbarStyle: FlushbarStyle.GROUNDED,
+  );
 }

@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:marker/src/bloc/note_bloc/note_bloc.dart';
@@ -124,15 +127,22 @@ class _HomePageState extends State<HomePage> {
                               ),
                               FloatingActionButton(
                                 child: const Icon(Icons.add),
-                                onPressed: () async {
+                                onPressed: () {
+                                  showLoading(msg: 'Adding', icon: Icons.add).show(context);
                                   _form.currentState?.save();
-                                  var result = await NetworkService()
-                                      .noteAddNewNote(_noteContent);
-                                  NoteElement createdNote = result.createdNote;
-                                  if (!mounted) return;
-                                  context.read<NoteBloc>().add(
-                                      NoteEventAddNewNote(
-                                          createdNote: createdNote));
+                                  NetworkService()
+                                      .noteAddNewNote(_noteContent)
+                                      .then((result) {
+                                    var createdNote = json.decode(
+                                        jsonEncode(result))['createdNote'];
+                                    NoteElement newCreatedNote =
+                                        NoteElement.fromJson(createdNote);
+                                    context.read<NoteBloc>().add(
+                                        NoteEventAddNewNote(
+                                            createdNote: newCreatedNote));
+                                    Navigator.popUntil(
+                                        context, ModalRoute.withName('/'));
+                                  });
                                 },
                               ),
                             ],
@@ -197,12 +207,14 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                        onPressed: () async {
-                          await NetworkService().noteDeleteNote(id);
-                          if (!mounted) return;
-                          context
-                              .read<NoteBloc>()
-                              .add(NoteEventDeleteNote(id: id));
+                        onPressed: () {
+                          showLoading(msg: 'Deleting...',icon: Icons.delete).show(context);
+                          NetworkService().noteDeleteNote(id).then((result) {
+                            context
+                                .read<NoteBloc>()
+                                .add(NoteEventDeleteNote(id: id));
+                            Navigator.pop(context);
+                          });
                         },
                         child: const FaIcon(
                           FontAwesomeIcons.trash,
@@ -217,4 +229,18 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+Flushbar<dynamic> showLoading({required String msg, required IconData icon}) {
+  return Flushbar(
+    message: msg,
+    icon: Icon(
+      icon,
+      size: 28.0,
+      color: Colors.orange,
+    ),
+    showProgressIndicator: true,
+    flushbarPosition: FlushbarPosition.TOP,
+    flushbarStyle: FlushbarStyle.GROUNDED,
+  );
 }
